@@ -44,22 +44,23 @@
   "keyToString": {
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "git-widget-placeholder": "main",
-    "last_opened_file_path": "/Users/linius/Github/gamebot",
+    "last_opened_file_path": "/Users/linius/Github/GAMEBoT",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "preferences.fileTypes",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$" />
       <recent name="$PROJECT_DIR$/agent_list" />
       <recent name="$PROJECT_DIR$/visualizer" />
       <recent name="$PROJECT_DIR$/game_env" />
-      <recent name="$PROJECT_DIR$/run_games_and_check" />
     </key>
   </component>
   <component name="SharedIndexes">
@@ -78,7 +79,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1739794441932</updated>
-      <workItem from="1739794443209" duration="4688000" />
+      <workItem from="1739794443209" duration="5476000" />
     </task>
     <task id="LOCAL-00001" summary="Clean the code">
       <option name="closed" value="true" />
