@@ -1,0 +1,16 @@
+groq
+google-generativeai
+pettingzoo
+gymnasium
+openai
+rlcard
+vertexai
+pygame
+anthropic
+open_spiel
+beartype
+transformers
+ai21
+reka-api
+mistralai
+tabulate
