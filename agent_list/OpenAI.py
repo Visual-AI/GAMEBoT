@@ -4,11 +4,13 @@ import json
 import time
 # get the subscription ID from the environment
 from openai import AzureOpenAI
+import openai
 
 
-class OpenAI:
+class AzOpenAI:
 
-    def __init__(self, model_name, api_key, azure_endpoint, temperature=0, max_output_tokens=1000, seed=42, default_parameters=True):
+    def __init__(self, model_name, api_key, azure_endpoint, temperature=0, max_output_tokens=1000, seed=42,
+                 default_parameters=True):
         self.model_name = model_name
         self.client = AzureOpenAI(
             azure_endpoint=azure_endpoint,
@@ -45,7 +47,7 @@ class OpenAI:
                             {"role": "user", "content": prompt},
                         ],
                         temperature=self.config['temperature'],
-                        #top_k=self.config['top_k'], ## could set via top_p (e.g., low)
+                        # top_k=self.config['top_k'], ## could set via top_p (e.g., low)
                         max_tokens=self.config['max_output_tokens'],
                         seed=self.config['seed']
                     )
@@ -60,82 +62,155 @@ class OpenAI:
         return f'None - failed to generate content after 10 tries'
 
 
+class OpenAI:
+
+    def __init__(self, model_name, api_key, temperature=0, max_output_tokens=4096, seed=42, default_parameters=True):
+        openai.api_key = api_key
+        self.model_name = model_name
+        self.config = {
+            "max_output_tokens": max_output_tokens,
+            "temperature": temperature,
+            # "top_k": top_k, ## could set via top_p (e.g., low)
+            "seed": seed
+        }
+        self.default_parameters = default_parameters
+
+    def get_response_text(self, prompt, reasoning_effort="high"):
+
+        # Send request
+        for i in range(10):
+
+            try:
+                if self.default_parameters:
+                    if self.model_name.startswith('o3'):
+                        response = openai.chat.completions.create(
+                            model=self.model_name,  # Specify the o3-mini model
+                            messages=[
+                                {"role": "user", "content": prompt},
+                            ],
+                            extra_body={"reasoning_effort": reasoning_effort},
+                            # max_completion_tokens=self.config['max_output_tokens'],
+                        )
+                    else:
+                        response = openai.chat.completions.create(
+                            model=self.model_name,  # Specify the o3-mini model
+                            messages=[
+                                {"role": "user", "content": prompt},
+                            ],
+                            # max_completion_tokens=self.config['max_output_tokens'],
+                        )
+                        print(response)
+                    return response.choices[0].message.content
+                else:
+                    response = openai.chat.completions.create(
+                        model=self.model_name,  # model = "deployment_name".
+                        messages=[
+                            {"role": "user", "content": prompt},
+                        ],
+                        temperature=self.config['temperature'],
+                        # top_k=self.config['top_k'], ## could set via top_p (e.g., low)
+                        max_completion_tokens=self.config['max_output_tokens'],
+                        seed=self.config['seed']
+                    )
+                    response = response.choices[0].message.content
+                    return response
+
+            except Exception as e:
+                print(f"Request failed for OpenAI: {e}")
+                time.sleep(10 * (i + 1))
+                continue
+        print("Failed to generate content - returning None")
+        return f'None - failed to generate content after 10 tries'
+
+
 if __name__ == '__main__':
     import keys
 
-    client = AzureOpenAI(
-        azure_endpoint="https://llambda-us.openai.azure.com",
-        api_key=keys.openai_key_lambda,
-        api_version="2024-05-01-preview"
-    )
+    # openai.api_key = keys.openai_key
+    # models = openai.models.list()
+    #
+    # print("Available OpenAI Models:")
+    # for model in models.data:
+    #     print(f"- {model.id}")
+
+    agent = OpenAI('o1-preview', keys.openai_key)
     prompt = '''
-    You are an expert poker player playing Texas Hold'em.
+You are an expert player of the game Connect Four.
 
 **Game Rules**
-1. Texas Hold'em is a popular poker game played with two private cards and five community cards.
-2. Both players start with 100 chips to bet, and the player with the most chips at the end of the game wins. If your chips drop to 0, you lose the game.
-3. The game consists of four betting rounds: pre-flop, flop, turn, and river. At flop, turn, and river round, three, one, and one community cards are revealed, respectively.
-4. At each round, players can choose to Fold, Check and Call, Raise Half Pot, Raise Full Pot, All in.
-    - Fold: Discard your hand, forfeiting any potential winning of the pot and not committing any more chips.
-    - Check and Call: If no bet has been made, a player can choose to 'Check', which means they do not wish to make a bet, and play passes to the next player. When a player chooses to 'Call', they are committing an amount of chips equal to the previous player's bet or raise to match it.
-    - Raise Half Pot: Increase the bet to half of the current pot size.
-    - Raise Full Pot: Increase the bet to the current pot size.
-    - All in: Bet all of your remaining chips.
-5. The player with the best five-card hand wins the pot.
-6. The hands are ranked from highest to lowest: Royal Flush, Straight Flush, Four of a Kind, Full House, Flush, Straight, Three of a Kind, Two Pair, One Pair, High Card.
-    Rank 1 - Royal Flush: A, K, Q, J, 10 all of the same suit.
-    Rank 2 - Straight Flush: Five consecutive cards of the same suit. Higher top card wins.
-    Rank 3 - Four of a Kind: Four cards of the same rank. Higher rank wins; if same, compare fifth card.
-    Rank 4 - Full House: Three cards of one rank and two cards of another rank. Higher three-card rank wins; if same, compare the two-card rank.
-    Rank 5 - Flush: Five non-consecutive cards of the same suit. Compare the highest card, then the second-highest, and so on.
-    Rank 6 - Straight: Five consecutive cards of different suits. Higher top card wins.
-    Rank 7 - Three of a Kind: Three cards of the same rank. Higher rank wins.
-    Rank 8 - Two Pair: Two cards of one rank and two cards of another rank. Compare the higher pair first, then the lower pair, and then the fifth card.
-    Rank 9 - One Pair: Two cards of the same rank. Compare the pair first, then the highest non-paired card, then the second highest, and so on.
-    Rank 10 - High Card: If no hand can be formed, the highest card wins. If the highest cards are the same, compare the second highest, and so on. Cards are ranked from A, K, ... to 3, 2, where A is the highest.
+1. The game is played on a 6x7 grid by two players, X and O.
+2. X typically plays first, then players alternate turns to drop their pieces.
+3. The pieces can only be dropped at the lowest available space within the column.
+4. The first player to connect four of their pieces in a row wins the game.
+5. The connection can be horizontal, vertical, or diagonal.
 
 **Input**
-You will receive the following inputs:
-* Your two private cards.
-* The revealed community cards.
-* Your chips in the pot.
-* Your opponent's chips in the pot.
+You will receive a state matrix representing the current game board:
+* Empty space: _
+* Player 1's piece: X
+* Player 2's piece: O
+The coordinates are zero-based indexing. For example, "(0,4):X" represents Player 1 has a piece on Row 0, Column 4. Row 0 is the lowest and Row 5 is the highest.
 
 **Output**
-Provide your chosen action strictly following the step-by-step process:
+Provide your chosen move. Your performance will be assessed on both the intermediate thinking results and the final decision. Follow the thinking process:
 
-1. **Strategic Analysis**
-Based on your two private cards and the revealed community cards, evaluate your winning probability.
-* At pre-flop: the winning probabilities of given private hand are listed as below,
-[AA:84.9%, KK:82.1%, QQ:79.6%, JJ:77.1%, TT:74.7%, 99:71.7%, 88:68.7%, 77:65.7%, 66:62.7%, 55:59.6%, 44:56.3%, 33:52.9%, 22:49.3%, AKs:66.2%, AKo:64.5%, AK  64.9%, AQ:64.0%, AJ:63.0%, AT:62.0%, A9:60.0%, A8:58.9%, A7:57.7%, A6:56.4%, A5:56.3%, A4:55.3%, A3:54.5%, A2:53.6%, KQs:62.4%, KQo:60.5%, KQ:60.9%, KJ:59.9%, KT:59.0%, K9:57.0%, K8:55.0%, K7:54.0%, K6:52.9%, K5:51.9%, K4:50.9%, K3:50%:3, K2:49.1%, QJs:59.1%, QJo:57.0%, QJ:57.4%, QT:56.5%, Q9:54.5%, Q8:52.6%, Q7:50.5%, Q6:49.7%, Q5:48.6%, Q4:47.7%, Q3:46.8%, Q2:45.9%, JTs:56.2%, JTo:53.8%, JT:54.4%, J9:52.3%, J8:50.4%, J7:48.4%, J6:46.4%, J5:45.6%, J4:44.6%, J3:43.8%, J2:42.8%, T9s:52.4%, T9o:49.8%, T9:50.5%, T8:48.5%, T7:46.5%, T6:44.6%, T5:42.6%, T4:41.8%, T3:40.9%, T2:40.1%, 98s:48.9%, 98o:46.1%, 98:46.8%, 97:44.8%, 96:42.9%, 95:40.9%, 94:38.9%, 93:38.3%, 92:37.4%, 87s:45.7%, 87o:42.7%, 87:43.4%, 86:41.5%, 85:39.6%, 84:37.5%, 83:35.6%, 82:35.0%, 76s:42.9%, 76o:39.7%, 76:40.4%, 75:38.5%, 74:36.5%, 73:34.6%, 72:32.6%, 72o:31.7%, 65s:40.3%, 65o:37.0%, 65:37.8%, 64:35.9%, 63:34.0%, 62:32.0%, 54s:38.5%, 54o:35.1%, 54:36.0%, 53:34.0%, 52:32.1%, 43s:35.7%, 43o:32.1%, 43:33.0%, 42:31.1%, 32s:33.1%, 32o:29.3%, 32:30.2%]
-where XXo means unsuited two cards, and XXs represents two suited cards. T means 10.
-Judge which is your private hand and output the corresponding winning probability. If the winning probability is larger than 55%, you can consider to raise or all in. If the winning probability is less than 45%, you can consider to fold. If the winning probability is between 45% and 55%, you can consider to check and call.
-* At flop, turn, and river round, first output your best five-card hand and your hand ranking according to the game rules. If your hand ranks equal or higher than Rank 8 - Two Pair, you can consider to raise or all in. If you are rank 10, and your highest private card is lower than K, you can consider to fold. Otherwise, you can consider to check and call.
+1. **Observations**
+Based on the current game state, provide the following observations:
+    * Where are your pieces located?
+    * Where are your opponent's pieces located?
+    * Check for all horizontal, vertical, or diagonal lines: are there any potential winning moves to form 4 in a row for you or your opponent? 
+    Output all of the winning moves for you in the format "[Intermediate Thinking Results 1: (X,X), (X,X), ...]". If none, output "[Intermediate Thinking Results 1: None]". 
+    Output all of the winning moves for your opponent in the format "[Intermediate Thinking Results 2: (X,X), (X,X), ...]". If none, output "[Intermediate Thinking Results 2: None]". 
+    For example, assume you are X player and would like to check for one of the valid move (3,2),
+        Current Game Board: 
+        (5,0):_ (5,1):_ (5,2):_ (5,3):O (5,4):_ (5,5):_ (5,6):_ 
+        (4,0):_ (4,1):_ (4,2):_ (4,3):X (4,4):_ (4,5):_ (4,6):_ 
+        (3,0):_ (3,1):O (3,2):_ (3,3):O (3,4):O (3,5):X (3,6):_ 
+        (2,0):_ (2,1):O (2,2):X (2,3):X (2,4):X (2,5):O (2,6):_ 
+        (1,0):X (1,1):X (1,2):X (1,3):O (1,4):X (1,5):O (1,6):_ 
+        (0,0):X (0,1):O (0,2):X (0,3):X (0,4):O (0,5):O (0,6):_ 
 
-Consider the following factors to determine your next action:
-    * Your current hand ranking and the probability of improving it.
-    * The community cards and potential winning combinations.
-    * Your opponents' possible hands and betting patterns.
-    * The pot odds and implied odds.
-    * Your position at the table and the betting round.
-    * The stack sizes of you and your opponents.
+        For (3,2), Check for X:
 
-2. **Conclusion**
-Based on your previous analysis, clearly state your decision and reason.
+        - Horizontal: check to left: (3,1):O, not X, stop; check to right: (3,3):O, not X, stop. Zero X in total.
+        - Vertical: check to down: (2,2):X, (1,2):X, (0,2):X. 3 X in total. A winning move for X.
+        - Diagonal 1: check to top left: (4,1):_, not X, stop; check to down right: (2,3):X, (1,4):X, (0,5):O, stop. 2 X in total, not enough.
+        - Diagonal 2: check to top right: (4,3):X, (5,4):_; check to down left: (2,1):O. 1 X, not enough.
 
-3. **Chosen Action**
-    * Only output the chosen action. Do not include any other words.
-    * The format is: "Fold", "Check and Call", "Raise Half Pot", "Raise Full Pot", "All in".
+        Check for O:
+        - Horizontal: check to left: (3,1):O, (3,0):_; check to right: (3,3):O, (3,4):O. 3 O in total. A winning move for O.
+        - Vertical: check to down: (2,2):X. 0 O in total.
+        - Diagonal 1: check to top left: (4,1):_, not O, stop; check to down right: (2,3):X. 0 O.
+        - Diagonal 2: check to top right: (4,3):X; check to down left: (2,1):O, (1,0):X, 1 O, not enough.
 
+    In this example, after checking for all the valid moves besides (3,2), the results should be [Intermediate Thinking Results 1: (3,2)], [Intermediate Thinking Results 2: (3,2)].
+
+2. **Strategic Analysis**
+From your previous observations, if you have a winning move after checking, directly choose it. Otherwise if your opponent have a winning move, block it. If these are not the case, choose the best move based on the following strategy:
+    * Look for opportunities to create multiple winning lines (for) simultaneously. If you have two discs in a row horizontally and two discs in a row diagonally, placing your next disc in the right position could lead to a win in multiple ways. For example, you have discs at [(0,1), (1,2), (2,2), (2,1)], then place your next disc at (2,3) would connect two lines: [(0,1), (1,2), (2,3)] and [(2,1), (2,2), (2,3)]
+    * If your opponent has two consecutive discs in a row horizontally, block them from getting a third disc in that row. For example, if your opponent has discs at [(0,1), (0,2)], then place your next disc at (0,3) or (0,0) to block them.
+    * Consider the center column as a strategic starting point. Placing your disc in the center column can give you more opportunities to create winning lines in different directions. Make the most of your opening moves by playing in the central columns.
+    * Plan Ahead: Think one or two moves ahead. Try to anticipate where your opponent might be aiming to connect their discs and plan your strategy accordingly. For example, if your opponent has a winning move on (3,3), while (2,3) is not your winning move, you should not take (2,3) as your move, avoiding (3,3) to be a valid move for your opponent.
+    * Try to get your 3 discs in a row with open spaces on either end.
+
+3. **Conclusion**
+In this section, based on your previous analysis, clearly state your decision for the position to place your next disc and give explanation.
+
+4. **Chosen Move**
+    * In this section, only output the chosen move. Do not include any other words.
+    * The format is: "Chosen Move: (a,b)", where a is the row number (0-5), and b is the column number (0-6) where you want to place your disc.
+
+
+Current Game Board: 
+(5,0):_ (5,1):_ (5,2):_ (5,3):_ (5,4):_ (5,5):_ (5,6):_ 
+(4,0):_ (4,1):_ (4,2):_ (4,3):_ (4,4):_ (4,5):_ (4,6):_ 
+(3,0):_ (3,1):_ (3,2):_ (3,3):_ (3,4):_ (3,5):_ (3,6):_ 
+(2,0):_ (2,1):_ (2,2):_ (2,3):_ (2,4):X (2,5):_ (2,6):_ 
+(1,0):_ (1,1):_ (1,2):O (1,3):_ (1,4):X (1,5):_ (1,6):_ 
+(0,0):_ (0,1):O (0,2):O (0,3):X (0,4):X (0,5):X (0,6):O 
+
+Current valid moves for player O: ['(0,0)', '(1,1)', '(2,2)', '(1,3)', '(3,4)', '(1,5)', '(1,6)']
+You are player O, please choose the best move considering the current board state.
     '''
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",  # model = "deployment_name".
-        messages=[
-            # {"role": "system", "content": "You are a helpful assistant."},
-            # {"role": "user", "content": "Does Azure OpenAI support customer managed keys?"},
-            # {"role": "assistant", "content": "Yes, customer managed keys are supported by Azure OpenAI."},
-            {"role": "user", "content": prompt},
-        ]
-    )
-    response = response.choices[0].message.content
-    print(response)
+    res = agent.get_response_text(prompt)
+    print(res)

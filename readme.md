@@ -34,10 +34,8 @@ Official repository for [Beyond Outcomes: Transparent Assessment of LLM Reasonin
 - claude-3-5-haiku@20241022
 - meta/llama-3.2-90b-vision-instruct-maas
 - deepseek-r1
-
-#### not yet implemented
-- o1-2024-12-17
-- o1-mini-2024-09-12
+- o1-preview
+- o3-mini
 
 ## Example of Usage
 1. Install the needed packages from the requirements.txt file
