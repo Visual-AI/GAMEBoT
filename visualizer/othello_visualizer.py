@@ -120,14 +120,50 @@ def create_video(history):
 
     # Create and save the video
     clip = VideoClip(make_frame, duration=duration)
-    clip.write_videofile("othello_game.mp4", fps=FPS)
+    clip.write_videofile("othello_game.mp4", fps=1)
     print("Video creation complete.")
 
 
-# Example usage
-from clean_history_othello import clean_history
+def main():
+    import re
 
-print("Starting video creation...")
-create_video(clean_history)
-print("Video creation process completed.")
-pygame.quit()
+    clean_history=[]
+    board_line = ''
+    line_count=0
+    history = open(args.path)
+
+    for line in history:
+        if line.startswith('Cycle 0='):
+            break
+
+    for line in history:
+        if line.startswith('O ') or line.startswith('B ') or line.startswith('W '):
+            board_line += line + '\n'
+            line_count += 1
+        if line_count == 8:
+            clean_history.append(board_line)
+            board_line = ''
+            line_count = 0
+        if "Final result" in line:
+            scores = re.findall("scores (\d+)", line)
+            # print(scores)
+            if scores[0]>scores[1]:
+                clean_history.append("Black Wins")
+            elif scores[0]<scores[1]:
+                clean_history.append("White Wins")
+            else:
+                clean_history.append("Draw")
+    print("Starting video creation...")
+    create_video(clean_history)
+    print("Video creation process completed.")
+    pygame.quit()
+
+
+if __name__=='__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Parser for visualizer')
+    # Add arguments
+    parser.add_argument('path', type=str, help='Path to the input file', default='game.log')
+    # Parse the arguments
+    args = parser.parse_args()
+    main()

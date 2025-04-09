@@ -222,76 +222,36 @@ def create_video(history):
         return frames_array[frame_idx]
 
     # Calculate duration based on number of frames and FPS
-    duration = len(frames_array) / FPS
+    duration = 1.5
 
     # Create and save the video
     clip = VideoClip(make_frame, duration=duration)
     clip.write_videofile("checkers_game.mp4", fps=FPS)
     print("Video creation complete.")
 
-# Example history
-# history = [
-#     """Step 29------------
-# ['_', 'W', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', 'W', '_', 'w', '_']
-# ['_', '_', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'w', '_', '_', '_', '_', '_']
-# ['_', '_', '_', '_', '_', '_', '_', '_']
-# ['b', '_', 'b', '_', '_', '_', 'b', '_']
-# ['_', 'b', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'B', '_', '_', '_', 'b', '_']
-# claude-3-5-sonnet@20240620 takes move (1,4)->(2,3)
-# """,
-#     """
-# Step 30------------
-# ['_', 'W', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', '_', '_', 'w', '_']
-# ['_', '_', '_', 'w', '_', '_', '_', 'w']
-# ['_', '_', 'w', '_', '_', '_', '_', '_']
-# ['_', '_', '_', '_', '_', '_', '_', '_']
-# ['b', '_', 'b', '_', '_', '_', 'b', '_']
-# ['_', 'b', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'B', '_', '_', '_', 'B', '_']
-# gemini-1.5-pro-preview-0514 takes move (5,6)->(4,5)
-# """,
-#     """
-# Step 31------------
-# ['_', 'W', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', '_', '_', 'w', '_']
-# ['_', '_', '_', 'w', '_', '_', '_', 'w']
-# ['_', '_', 'w', '_', '_', '_', '_', '_']
-# ['_', '_', '_', '_', '_', 'b', '_', '_']
-# ['b', '_', 'b', '_', '_', '_', '_', '_']
-# ['_', 'b', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'B', '_', '_', '_', 'b', '_']
-# claude-3-5-sonnet@20240620 takes move (3,2)->(4,3)
-# """,
-#     """
-# Step 32------------
-# ['_', 'W', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', '_', '_', 'w', '_']
-# ['_', '_', '_', 'w', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', '_', '_', '_', '_']
-# ['_', '_', '_', 'w', '_', 'b', '_', '_']
-# ['b', '_', 'b', '_', '_', '_', '_', '_']
-# ['_', 'b', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'B', '_', '_', '_', 'b', '_']
-# gemini-1.5-pro-preview-0514 takes move (5,2)->(3,4)
-# """,
-#     """
-# Step 33------------
-# ['_', 'W', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', '_', '_', 'w', '_']
-# ['_', '_', '_', 'w', '_', '_', '_', 'w']
-# ['_', '_', '_', '_', 'b', '_', '_', '_']
-# ['_', '_', '_', '_', '_', 'b', '_', '_']
-# ['b', '_', '_', '_', '_', '_', '_', '_']
-# ['_', 'b', '_', '_', '_', '_', '_', 'w']
-# ['_', '_', 'B', '_', '_', '_', 'b', '_']
-# gemini-1.5-pro-preview-0514 takes move (3,4)->(1,2)
-# """,
-# ]
-from clean_history_checkers import clean_history
 
-create_video(clean_history)
-pygame.quit()
+def main():
+    history = open(args.path)
+
+    for line in history:
+        if line.startswith('Cycle 0='):
+            break
+    clean_history = ''
+    for line in history:
+        clean_history += line
+    clean_history = clean_history.split('Step')
+    # print(clean_history)
+    print("Starting video creation...")
+    create_video(clean_history)
+    print("Video creation process completed.")
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Parser for visualizer')
+    parser.add_argument('path', type=str, help='Path to the input file', default='game.log')
+    parser.add_argument('--output', default='checkers_game.mp4')
+    args = parser.parse_args()
+    main()

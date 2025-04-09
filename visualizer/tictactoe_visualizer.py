@@ -86,8 +86,44 @@ def create_video(history):
         os.remove(frame)
 
 
-# Example usage
-from utils.generate_history_str import clean_history
+def main():
 
-create_video(clean_history)
-pygame.quit()
+    history = open(args.path)
+
+    for line in history:
+        if line.startswith('-------------'):
+            break
+
+    clean_history = []
+    board_line = ''
+    line_count = 0
+    for line in history:
+        if line.startswith('O') or line.startswith('X') or line.startswith('_'):
+            board_line += line + '\n'
+            line_count += 1
+        if line_count == 3:
+            clean_history.append(board_line)
+            board_line = ''
+            line_count = 0
+        if "It's a tie!" in line:
+            clean_history.append("It's a tie!")
+            board_line = ''
+            line_count = 0
+        if "win" in line:
+            clean_history.append(line)
+            board_line = ''
+            line_count = 0
+    # print(clean_history)
+    print("Starting video creation...")
+    create_video(clean_history)
+    print("Video creation process completed.")
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Parser for visualizer')
+    parser.add_argument('path', type=str, help='Path to the input file', default='game.log')
+    args = parser.parse_args()
+    main()

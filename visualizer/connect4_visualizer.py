@@ -4,15 +4,14 @@ from moviepy.editor import ImageSequenceClip
 import os
 import re
 
-
 # Initialize Pygame
 pygame.init()
 
 # Constants
-WIDTH, HEIGHT = (700+80)*6, (600+60)*6
+WIDTH, HEIGHT = (700 + 80) * 6, (600 + 60) * 6
 BOARD_ROWS, BOARD_COLS = 6, 7
-CELL_SIZE = min(700*6 // BOARD_COLS, 600*6 // BOARD_ROWS)
-FPS = 0.75  # Frames per second for the video
+CELL_SIZE = min(700 * 6 // BOARD_COLS, 600 * 6 // BOARD_ROWS)
+FPS = 2  # Frames per second for the video
 
 # Colors
 BLACK = (0, 0, 0)
@@ -35,7 +34,7 @@ clock = pygame.time.Clock()
 
 # Fonts
 font = pygame.freetype.SysFont(None, 40)
-result_font = pygame.freetype.SysFont(None, 60*6)
+result_font = pygame.freetype.SysFont(None, 60 * 6)
 
 
 def draw_board():
@@ -44,17 +43,17 @@ def draw_board():
     for row in range(BOARD_ROWS):
         for col in range(BOARD_COLS):
             pygame.draw.circle(screen, WHITE,
-                               (col * CELL_SIZE + CELL_SIZE // 2+240,
-                                row * CELL_SIZE + CELL_SIZE // 2+180),
-                               CELL_SIZE // 2 - 40,0)
+                               (col * CELL_SIZE + CELL_SIZE // 2 + 240,
+                                row * CELL_SIZE + CELL_SIZE // 2 + 180),
+                               CELL_SIZE // 2 - 40, 0)
 
 
 def draw_piece(row, col, piece):
     color = O_COLOR if piece == 'O' else X_COLOR if piece == 'X' else WHITE
     pygame.draw.circle(screen, color,
-                       (col * CELL_SIZE + CELL_SIZE // 2+240,
-                        row * CELL_SIZE + CELL_SIZE // 2+180),
-                       CELL_SIZE // 2 - 40,0)
+                       (col * CELL_SIZE + CELL_SIZE // 2 + 240,
+                        row * CELL_SIZE + CELL_SIZE // 2 + 180),
+                       CELL_SIZE // 2 - 40, 0)
 
 
 def draw_result(result):
@@ -65,7 +64,7 @@ def draw_result(result):
 
 
 def parse_board_state(board_state):
-    lines = board_state.strip().split('\n') # Skip the column numbers
+    lines = board_state.strip().split('\n')  # Skip the column numbers
     board = []
     for line in lines:
         row = re.findall(r'\| (.) ', line)
@@ -79,17 +78,20 @@ def create_video(history):
     frames = []
 
     for frame_num, state in enumerate(history):
-
+        if not history:
+            continue
         draw_board()
         board = parse_board_state(state)
         for row, line in enumerate(board):
             for col, piece in enumerate(line):
                 if piece != '_':
                     draw_piece(row, col, piece)
-        if "O wins" in state:
-            draw_result('Red Player Wins!')
-        elif "X wins" in state:
-            draw_result('Yellow Player Wins!')
+
+        pattern = r"(.+?)\s+wins!"
+        match = re.search(pattern, state)
+        if match:
+            winner = match.group(1)
+            draw_result('{} Wins!'.format(winner))
         pygame.display.flip()
         frame_name = f"frame_{frame_num:03d}.png"
         pygame.image.save(screen, frame_name)
@@ -97,42 +99,38 @@ def create_video(history):
 
         clock.tick(FPS)
 
-    # Create video from frames
-    clip = ImageSequenceClip(frames, fps=FPS)
-    clip.write_videofile("connect4_game.mp4", fps=FPS)
+    durations = [1.5] * len(frames)
 
-    # Clean up temporary frame files
+    # Create video from frames
+    clip = ImageSequenceClip(frames, durations=durations)
+    clip.write_videofile(args.output, fps=FPS)
+
     for frame in frames:
         os.remove(frame)
 
 
-# Example usage
-# history = [
-#     """Step 20------------
-#
-#   0   1   2   3   4   5   6
-# | * | * | * | * | * | * | * |
-# | * | * | X | O | * | * | * |
-# | * | * | O | X | * | * | * |
-# | * | X | O | O | X | * | * |
-# | O | X | O | X | X | * | * |
-# | X | O | X | X | O | O | * |
-#
-# meta-llama3-405b-instruct-maas takes move 4""",
-#     """Step 21------------
-#
-#   0   1   2   3   4   5   6
-# | * | * | * | * | * | * | * |
-# | * | * | X | O | * | * | * |
-# | * | * | O | X | O | * | * |
-# | * | X | O | O | X | * | * |
-# | O | X | O | X | X | * | * |
-# | X | O | X | X | O | O | * |
-# """,
-# """
-# O wins!!!!!!!!!!"""
-# ]
-from clean_history_connect4 import clean_history
-# print(clean_history)
-create_video(clean_history)
-pygame.quit()
+def main():
+    history = open(args.path)
+
+    for line in history:
+        if line.startswith('Cycle 0='):
+            break
+    clean_history = ''
+    for line in history:
+        clean_history += line
+    clean_history = clean_history.split('Step')
+    # print(clean_history)
+    print("Starting video creation...")
+    create_video(clean_history)
+    print("Video creation process completed.")
+    pygame.quit()
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Parser for visualizer')
+    parser.add_argument('path', type=str, help='Path to the input file', default='game.log')
+    parser.add_argument('--output', default='connect4_game.mp4')
+    args = parser.parse_args()
+    main()
