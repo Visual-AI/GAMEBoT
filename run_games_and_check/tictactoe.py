@@ -10,7 +10,6 @@ from datetime import datetime
 import argparse
 import logging
 import random
-import prompt_for_comparison
 
 parser = argparse.ArgumentParser(description='Parser for test of agent')
 
@@ -30,19 +29,8 @@ args = parser.parse_args()
 # else:
 #     system_prompt = system_prompt_tictactoe_llmarena
 
-if args.prompt_type_agent1 == 'no':
-    prompt1 = prompt_for_comparison.system_prompt_tictactoe_non_reason
-elif args.prompt_type_agent1 == 'naive':
-    prompt1 = prompt_for_comparison.system_prompt_tictactoe_simple_cot
-else:
-    prompt1 = system_prompt_tictactoe
-
-if args.prompt_type_agent2 == 'no':
-    prompt2 = prompt_for_comparison.system_prompt_tictactoe_non_reason
-elif args.prompt_type_agent2 == 'naive':
-    prompt2 = prompt_for_comparison.system_prompt_tictactoe_simple_cot
-else:
-    prompt2 = system_prompt_tictactoe
+prompt1 = system_prompt_tictactoe
+prompt2 = system_prompt_tictactoe
 current_time = datetime.now()
 date_string = current_time.strftime("%m-%d-%H-%M")
 
