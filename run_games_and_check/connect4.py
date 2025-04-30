@@ -13,7 +13,6 @@ import argparse
 from agent_list import InitAgent
 from utils.util import *
 from check_and_random import *
-import prompt_for_comparison
 
 # common setup =========================
 parser = argparse.ArgumentParser(description='Parser for test of agent')
@@ -80,19 +79,8 @@ rgb_list = []
 count_for_request = 0
 start_time = time.time()
 
-if args.prompt_type_agent1 == 'no':
-    prompt1 = prompt_for_comparison.system_prompt_connect4_non_reason
-elif args.prompt_type_agent1 == 'naive':
-    prompt1 = prompt_for_comparison.system_prompt_connect4_simple_cot
-else:
-    prompt1 = system_prompt_connect4
-
-if args.prompt_type_agent2 == 'no':
-    prompt2 = prompt_for_comparison.system_prompt_connect4_non_reason
-elif args.prompt_type_agent2 == 'naive':
-    prompt2 = prompt_for_comparison.system_prompt_connect4_simple_cot
-else:
-    prompt2 = system_prompt_connect4
+prompt1 = system_prompt_connect4
+prompt2 = system_prompt_connect4
 logger_game.info('Prompt1:\n {}'.format(prompt1))
 
 
