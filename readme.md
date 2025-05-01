@@ -79,6 +79,28 @@ Advantages of using GAMEBoT include:
 <!-- End of HTML Table for GIFs -->
 
 
+## Latest Updates (March 2025)
+
+**O3-mini-high dominates GAMEBoT!** Our latest evaluations show O3-mini-high outperforming top competitors including DeepSeek-R1 and Claude 3.7 Sonnet.
+
+### Connect4 Matches
+| Model A                   | Score  | Model B                   |
+|---------------------------|--------|---------------------------|
+| gemini-2.0-flash-thinking | 6 : 4  | gpt-4o-0513               |
+| gemini-2.0-pro-exp        | 6 : 4  | gemini-2.0-flash-thinking |
+| deepseek-r1               | 7 : 3  | gemini-2.0-pro-exp        |
+| deepseek-r1               | 8 : 8  | o1-preview                |
+| o3-mini-high              | 10 : 6 | deepseek-r1               |
+| o3-mini-high              | 8 : 8  | claude-3.7-sonnet         |
+| o3-mini-high              | 12 : 4 | gpt-4.5                   |
+
+### Checkers Matches
+| Model A            | Score | Model B                   |
+|--------------------|-------|---------------------------|
+| gemini-2.0-pro-exp | 5 : 4 | gemini-2.0-flash-thinking |
+| deepseek-r1        | 9 : 1 | gemini-2.0-pro-exp        |
+| o3-mini-high       | 9 : 0 | deepseek-r1               |
+| o3-mini-high       | 9 : 0 | claude-3.7-sonnet         |
 
 
 ## Evaluated Models
