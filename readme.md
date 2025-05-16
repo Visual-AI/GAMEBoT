@@ -15,6 +15,8 @@
 
 ## Overview
 
+**Exciting Update**: Our work has been accepted to the **ACL 2025 Main Conference**!
+
 **GAMEBoT** is a benchmark designed to evaluate the reasoning capabilities of Large Language Models (LLMs) through direct competition in a suite of diverse games. Going beyond simple win/loss outcomes, GAMEBoT facilitates a more transparent assessment by enabling analysis of the intermediate reasoning steps and strategies employed by LLMs during gameplay. 
 
 Advantages of using GAMEBoT include:
@@ -79,7 +81,7 @@ Advantages of using GAMEBoT include:
 <!-- End of HTML Table for GIFs -->
 
 
-## Latest Updates (March 2025)
+## Latest Evaluations (March 2025)
 
 **O3-mini-high dominates GAMEBoT!** Our latest evaluations show O3-mini-high outperforming top competitors including DeepSeek-R1 and Claude 3.7 Sonnet.
 
