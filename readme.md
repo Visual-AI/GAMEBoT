@@ -1,7 +1,7 @@
 <div align="center">
   <img src="coolerbot_nobg.png" width="150" alt="GAMEBoT Logo - LLM Game Benchmark">
 
-  <h1><strong>Beyond Outcomes: Transparent Assessment of LLM Reasoning in Games</strong></h1>
+  <h1><strong>GAMEBoT: Transparent Assessment of LLM Reasoning in Games</strong></h1>
   <p>
     <a href="https://arxiv.org/abs/2412.13602"><strong>Read the Paper (arXiv)</strong></a> |
     <a href="https://visual-ai.github.io/gamebot/"><strong>Visit the Project Website</strong></a>
