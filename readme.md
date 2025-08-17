@@ -14,6 +14,7 @@
 </div>
 
 ## Update
+[2025/08] Add evaluation results to GPT-5 and Gemini 2.5 Pro. Check the gaming [replay](https://visual-ai.github.io/gamebot/)!
 
 [2025/05] 🌟 Our work has been accepted to the **ACL 2025 Main Conference**!
 
