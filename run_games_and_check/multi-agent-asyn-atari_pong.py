@@ -9,6 +9,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)  # add path
 from utils.get_real_position import *
 from prompt_check_intermediate import *
+from prompt_field_rationale import build_gamebot_prompt
 import logging
 from datetime import datetime
 import asyncio
@@ -19,12 +20,12 @@ from agent_list import InitAgent
 from utils.util import ram2label, find_action
 
 
-async def async_call_llm_api(frame_input, logger, agent, agent_str):
+async def async_call_llm_api(frame_input, system_prompt, logger, agent, agent_str):
     if agent_str == 'random':
         return random.choice([0, 1, 2])
     else:
         logger.info(frame_input)
-        final_input1 = system_prompt_pong + frame_input
+        final_input1 = system_prompt + frame_input
         response = agent.get_response_text(final_input1)
         if response.startswith("None - failed to generate content after"):
             logger.info('None - failed to generate content')
@@ -49,6 +50,10 @@ async def main():
     # agent2_str = 'mixtral-8x7b-32768'
     agent1_str = args.agent1_str
     agent2_str = args.agent2_str
+    prompt1 = build_gamebot_prompt("pong", system_prompt_pong, args.prompt_type_agent1, role="right paddle")
+    prompt2 = build_gamebot_prompt("pong", system_prompt_pong, args.prompt_type_agent2, role="left paddle")
+    agent1_label = agent1_str if agent1_str == "random" else agent1_str + "_" + args.prompt_type_agent1
+    agent2_label = agent2_str if agent2_str == "random" else agent2_str + "_" + args.prompt_type_agent2
     game_str = "pong"
     cycles = args.cycles
     agent1_scores = 0
@@ -57,7 +62,7 @@ async def main():
     init_agent = InitAgent(key_start=args.key_start)
     agent1 = init_agent.init_agent(agent1_str)
     agent2 = init_agent.init_agent(agent2_str)
-    run_category = 'running_log/{}/{}_vs_{}_'.format(game_str, agent1_str, agent2_str) + date_string
+    run_category = 'running_log/{}/{}_vs_{}_'.format(game_str, agent1_label, agent2_label) + date_string
 
     if not os.path.exists(run_category):
         # Create the directory
@@ -75,15 +80,19 @@ async def main():
     logger1.setLevel(logging.INFO)
     logger2.setLevel(logging.INFO)
     logger_game.setLevel(logging.INFO)
-    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_str))
-    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_str))
+    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_label))
+    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_label))
     file_handler_game = logging.FileHandler('{}/game.log'.format(run_category))
     logger1.addHandler(file_handler1)
     logger2.addHandler(file_handler2)
     logger_game.addHandler(file_handler_game)
     # logging.basicConfig(filename='{}/logfile.log'.format(run_category), level=logging.INFO)
 
-    env = pong_v3.parallel_env(num_players=2, render_mode="rgb_array",auto_rom_install_path='path/to/roms')
+    rom_root = os.environ.get(
+        "GAMEBOT_ATARI_ROM_ROOT",
+        "/home/user/miniconda3/envs/theorygame/lib/python3.13/site-packages/multi_agent_ale_py",
+    )
+    env = pong_v3.parallel_env(num_players=2, render_mode="rgb_array", auto_rom_install_path=rom_root)
     env.reset(seed=random.randint(0, 9999))
     rgb_list = []
     action2 = 0
@@ -129,8 +138,8 @@ async def main():
                             step - 2,str(refined_info_queue[1]),step - 1,str(refined_info_queue[2]),step,str(refined_info_queue[3]))
                         frame_input2 = 'Input:\n\n Frame {}\n {} \n Frame {}\n {}\n Frame {}\n {} \nOutput:'.format(
                             step - 2,str(info_flipped_queue[1]),step - 1,str(info_flipped_queue[2]),step,str(info_flipped_queue[3]))
-                        task1 = async_call_llm_api(frame_input1, logger1, agent1, agent1_str)
-                        task2 = async_call_llm_api(frame_input2, logger2, agent2, agent2_str)
+                        task1 = async_call_llm_api(frame_input1, prompt1, logger1, agent1, agent1_str)
+                        task2 = async_call_llm_api(frame_input2, prompt2, logger2, agent2, agent2_str)
                         action_gather = await asyncio.gather(task1, task2)
                         action1 = action_gather[0]
                         action2 = action_gather[1]
@@ -138,7 +147,7 @@ async def main():
                             logger_game.info('Rate limit or network problem, break')
                             break
                         logger_game.info(
-                            '{} takes action {}; {} takes action {}'.format(agent1_str, action1, agent2_str, action2))
+                            '{} takes action {}; {} takes action {}'.format(agent1_label, action1, agent2_label, action2))
 
                         curr_time = time.time()
                         duration_seconds = curr_time - start_time
@@ -165,13 +174,13 @@ async def main():
 
                         if labels['player_score'] == 1:
                             logger_game.info(
-                                f"{agent1_str} wins!!!!!!!!!!!!!!!!!!!!!!!!!!! Cost total {count_for_request} requests")
+                                f"{agent1_label} wins!!!!!!!!!!!!!!!!!!!!!!!!!!! Cost total {count_for_request} requests")
                             agent1_scores += 1
                             env.reset(seed=random.randint(0, 9999))
                             break
                         if labels['enemy_score'] == 1:
                             logger_game.info(
-                                f"{agent2_str} wins!!!!!!!!!!!!!!!!!!!!!!!!!!! Cost total {count_for_request} requests")
+                                f"{agent2_label} wins!!!!!!!!!!!!!!!!!!!!!!!!!!! Cost total {count_for_request} requests")
                             agent2_scores += 1
                             env.reset(seed=random.randint(0, 9999))
                             break
@@ -190,11 +199,13 @@ async def main():
         # if step > 100:
         #     break
         # if labels
-    save_video(rgb_list[60:], run_category, fps=60, step_starting_index=0, episode_index=0,
-               name_prefix='{}_vs_{}'.format(agent1_str, agent2_str))
+    video_frames = rgb_list[60:]
+    if video_frames:
+        save_video(video_frames, run_category, fps=60, step_starting_index=0, episode_index=0,
+                   name_prefix='{}_vs_{}'.format(agent1_label, agent2_label))
     env.close()
     logger_game.info(
-        'Final result: {} scores {}, and {} scores {}, draw {} times'.format(agent1_str, agent1_scores, agent2_str,
+        'Final result: {} scores {}, and {} scores {}, draw {} times'.format(agent1_label, agent1_scores, agent2_label,
                                                                              agent2_scores, draw_scores))
 
 
@@ -209,6 +220,8 @@ parser.add_argument('agent2_str', help='agent2')
 
 parser.add_argument('--cycles', type=int, help='Times of game cycles', default=1)
 parser.add_argument('--key_start', type=int, help='Times of game cycles', default=0)
+parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
+parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
 # Parse the arguments
 args = parser.parse_args()
 asyncio.run(main())

@@ -5,6 +5,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)  # add path
 from prompt_check_intermediate import system_prompt_tictactoe
+from prompt_field_rationale import build_gamebot_prompt
 from agent_list import InitAgent
 from datetime import datetime
 import argparse
@@ -19,8 +20,8 @@ parser.add_argument('agent2_str')
 parser.add_argument('--cycles', type=int, help='Times of game cycles', default=1)
 parser.add_argument('--test_type', help='Type of test', default='normal')
 parser.add_argument('--key_start', type=int, default=0)
-parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt, no|naive|cot', default='cot')
-parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt, no|naive|cot', default='cot')
+parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
+parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
 
 # Parse the arguments
 args = parser.parse_args()
@@ -29,8 +30,8 @@ args = parser.parse_args()
 # else:
 #     system_prompt = system_prompt_tictactoe_llmarena
 
-prompt1 = system_prompt_tictactoe
-prompt2 = system_prompt_tictactoe
+prompt1 = build_gamebot_prompt("tictactoe", system_prompt_tictactoe, args.prompt_type_agent1, role="player X")
+prompt2 = build_gamebot_prompt("tictactoe", system_prompt_tictactoe, args.prompt_type_agent2, role="player O")
 current_time = datetime.now()
 date_string = current_time.strftime("%m-%d-%H-%M")
 
@@ -79,6 +80,7 @@ logger1.addHandler(file_handler1)
 logger2.addHandler(file_handler2)
 logger_game.addHandler(file_handler_game)
 logger_game.info('Prompt1:\n {}'.format(prompt1))
+logger_game.info('Prompt2:\n {}'.format(prompt2))
 
 
 def find_action(response):

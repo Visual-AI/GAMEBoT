@@ -8,6 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir)  # add path
 from prompt_check_intermediate import *
+from prompt_field_rationale import build_gamebot_prompt
 import logging
 from datetime import datetime
 import argparse
@@ -27,7 +28,8 @@ def random_agent_negotiate(pool_values):
 def main():
     # ---------------To be modified: define game and prompt----------------
     game_str = "negotiate"
-    system_prompt = system_prompt_negotiate
+    system_prompt1 = build_gamebot_prompt(game_str, system_prompt_negotiate, args.prompt_type_agent1, role="Player1")
+    system_prompt2 = build_gamebot_prompt(game_str, system_prompt_negotiate, args.prompt_type_agent2, role="Player2")
     # ---------------------------------------------
 
     current_time = datetime.now()
@@ -36,6 +38,8 @@ def main():
     print(date_string)
     agent1_str = args.agent1_str
     agent2_str = args.agent2_str
+    agent1_label = agent1_str if agent1_str == "random" else agent1_str + "_" + args.prompt_type_agent1
+    agent2_label = agent2_str if agent2_str == "random" else agent2_str + "_" + args.prompt_type_agent2
     cycles = args.cycles
     agent1_scores = 0
     agent2_scores = 0
@@ -52,7 +56,7 @@ def main():
         os.mkdir(run_category_game)
         print("Directory created:", run_category_game)
 
-    run_category = run_category_game + '/{}_vs_{}_'.format(agent1_str, agent2_str) + date_string + ''.join(
+    run_category = run_category_game + '/{}_vs_{}_'.format(agent1_label, agent2_label) + date_string + ''.join(
         random.choices(
             'abcdefghijklmnopqrstuvwxyz', k=2))
 
@@ -71,14 +75,15 @@ def main():
     logger1.setLevel(logging.INFO)
     logger2.setLevel(logging.INFO)
     logger_game.setLevel(logging.INFO)
-    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_str))
-    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_str))
+    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_label))
+    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_label))
     file_handler_game = logging.FileHandler('{}/game.log'.format(run_category))
     logger1.addHandler(file_handler1)
     logger2.addHandler(file_handler2)
     logger_game.addHandler(file_handler_game)
 
-    logger_game.info(system_prompt)
+    logger_game.info('Prompt1:\n {}'.format(system_prompt1))
+    logger_game.info('Prompt2:\n {}'.format(system_prompt2))
     count_for_request = 0
     start_time = time.time()
 
@@ -108,7 +113,7 @@ def main():
                     actions = random_agent_negotiate(pool_values)
                     intermediate_results=[-1,-1]
                 else:
-                    intermediate_results, actions = call_llm_api_check_intermediate(state_prompt_p1, system_prompt, logger1, agent1, game_str)
+                    intermediate_results, actions = call_llm_api_check_intermediate(state_prompt_p1, system_prompt1, logger1, agent1, game_str)
                 check_results = game_env.check_intermediate_results(intermediate_results, actions)
                 agent1_intermediate_correct += check_results[0]
                 agent1_intermediate_total += check_results[1]
@@ -119,7 +124,7 @@ def main():
                     actions = random_agent_negotiate(pool_values)
                     intermediate_results=[-1,-1]
                 else:
-                    intermediate_results, actions = call_llm_api_check_intermediate(state_prompt_p2, system_prompt, logger2, agent2, game_str)
+                    intermediate_results, actions = call_llm_api_check_intermediate(state_prompt_p2, system_prompt2, logger2, agent2, game_str)
                 check_results = game_env.check_intermediate_results(intermediate_results, actions)
                 agent2_intermediate_correct += check_results[0]
                 agent2_intermediate_total += check_results[1]
@@ -144,10 +149,12 @@ def main():
 
     # ---------------To be modified: log final results----------------
     logger_game.info(
-        'Final score: {} {}:{} {}; total {} requests for two agents'.format(agent1_str, agent1_scores, agent2_str,
+        'Final score: {} {}:{} {}; total {} requests for two agents'.format(agent1_label, agent1_scores, agent2_label,
                                                                             agent2_scores, count_for_request))
-    logger_game.info('Agent1 intermediate correct rate: {}/{}, {}'.format(agent1_intermediate_correct, agent1_intermediate_total, agent1_intermediate_correct/agent1_intermediate_total))
-    logger_game.info('Agent2 intermediate correct rate: {}/{}, {}'.format(agent2_intermediate_correct, agent2_intermediate_total, agent2_intermediate_correct/agent2_intermediate_total))
+    agent1_rate = agent1_intermediate_correct / agent1_intermediate_total if agent1_intermediate_total else 0.0
+    agent2_rate = agent2_intermediate_correct / agent2_intermediate_total if agent2_intermediate_total else 0.0
+    logger_game.info('Agent1 intermediate correct rate: {}/{}, {}'.format(agent1_intermediate_correct, agent1_intermediate_total, agent1_rate))
+    logger_game.info('Agent2 intermediate correct rate: {}/{}, {}'.format(agent2_intermediate_correct, agent2_intermediate_total, agent2_rate))
     # ---------------------------------------------
 
 
@@ -159,6 +166,8 @@ parser.add_argument('agent1_str', type=str, help='Agent 1 string')
 parser.add_argument('agent2_str', type=str, help='Agent 2 string')
 parser.add_argument('--cycles', type=int, help='Times of game cycles', default=1)
 parser.add_argument('--key_start', type=int, help='', default=0)
+parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
+parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
 # Parse the arguments
 args = parser.parse_args()
 main()

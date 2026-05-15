@@ -8,6 +8,7 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir) # add path
 
 from prompt_check_intermediate import *
+from prompt_field_rationale import build_gamebot_prompt
 import logging
 from datetime import datetime
 import argparse
@@ -118,7 +119,8 @@ def main():
 
     #---------------To be modified: define game and prompt----------------
     game_str = "texas_holdem"
-    system_prompt = system_prompt_texas_holdem
+    system_prompt1 = build_gamebot_prompt("texas", system_prompt_texas_holdem, args.prompt_type_agent1, role="player_0")
+    system_prompt2 = build_gamebot_prompt("texas", system_prompt_texas_holdem, args.prompt_type_agent2, role="player_1")
     #---------------------------------------------
 
     current_time = datetime.now()
@@ -127,6 +129,8 @@ def main():
     print(date_string)
     agent1_str = args.agent1_str
     agent2_str = args.agent2_str
+    agent1_label = agent1_str if agent1_str == "random" else agent1_str + "_" + args.prompt_type_agent1
+    agent2_label = agent2_str if agent2_str == "random" else agent2_str + "_" + args.prompt_type_agent2
     cycles = args.cycles
     agent1_scores = 0
     agent2_scores = 0
@@ -144,7 +148,7 @@ def main():
         os.makedirs(run_category_game, exist_ok=True)
         print("Directory created:", run_category_game)
 
-    run_category = run_category_game+'/{}_vs_{}_'.format(agent1_str, agent2_str) + date_string
+    run_category = run_category_game+'/{}_vs_{}_'.format(agent1_label, agent2_label) + date_string
 
     if not os.path.exists(run_category):
         # Create the directory
@@ -161,14 +165,15 @@ def main():
     logger1.setLevel(logging.INFO)
     logger2.setLevel(logging.INFO)
     logger_game.setLevel(logging.INFO)
-    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_str))
-    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_str))
+    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_label))
+    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_label))
     file_handler_game = logging.FileHandler('{}/game.log'.format(run_category))
     logger1.addHandler(file_handler1)
     logger2.addHandler(file_handler2)
     logger_game.addHandler(file_handler_game)
 
-    logger_game.info(system_prompt)
+    logger_game.info('Prompt1:\n {}'.format(system_prompt1))
+    logger_game.info('Prompt2:\n {}'.format(system_prompt2))
     count_for_request = 0
     start_time = time.time()
 
@@ -197,23 +202,23 @@ def main():
                 # ---------------To be modified: get game state from env and call llm to get actions----------------
                 if agent == 'player_0':
                     game_state = texas_class1.get_state_message(mask, observation)
-                    logger_game.info(f'\n{agent1_str}\'s turn------------')
+                    logger_game.info(f'\n{agent1_label}\'s turn------------')
                     logger_game.info(game_state)
                 else:
                     game_state = texas_class2.get_state_message(mask, observation)
-                    logger_game.info(f'\n{agent2_str}\'s turn------------')
+                    logger_game.info(f'\n{agent2_label}\'s turn------------')
                     logger_game.info(game_state)
 
                 state_prompt = 'Current Game State: \n\n' + game_state + '\n'
                 if agent=='player_0':
                     if agent1_str == 'random':
                         intermediate_results, action = random_texas(mask)
-                        logger_game.info(f'{agent1_str} {texas_class1.act2pos[action]}')
-                        print(f'{agent1_str} {texas_class1.act2pos[action]}')
+                        logger_game.info(f'{agent1_label} {texas_class1.act2pos[action]}')
+                        print(f'{agent1_label} {texas_class1.act2pos[action]}')
                     else:
-                        intermediate_results, action = call_llm_api_check_intermediate(state_prompt, system_prompt, logger1, agent1, "texas", find_action_function=texas_class1.find_action_texas)
-                        logger_game.info(f'{agent1_str} {texas_class1.act2pos[action]}')
-                        print(f'{agent1_str} {texas_class1.act2pos[action]}')
+                        intermediate_results, action = call_llm_api_check_intermediate(state_prompt, system_prompt1, logger1, agent1, "texas", find_action_function=texas_class1.find_action_texas)
+                        logger_game.info(f'{agent1_label} {texas_class1.act2pos[action]}')
+                        print(f'{agent1_label} {texas_class1.act2pos[action]}')
                     logger_game.info(f'Intermediate results: {intermediate_results}')
                     # check_results = check_intermediate_texas(intermediate_results, texas_class1.private, texas_class1.public)
                     # agent1_intermediate_correct += check_results[0]
@@ -221,12 +226,12 @@ def main():
                 else:
                     if agent2_str == 'random':
                         intermediate_results, action = random_texas(mask)
-                        logger_game.info(f'{agent2_str} {texas_class2.act2pos[action]}')
-                        print(f'{agent2_str} {texas_class2.act2pos[action]}')
+                        logger_game.info(f'{agent2_label} {texas_class2.act2pos[action]}')
+                        print(f'{agent2_label} {texas_class2.act2pos[action]}')
                     else:
-                        intermediate_results, action = call_llm_api_check_intermediate(state_prompt, system_prompt, logger2, agent2, "texas", find_action_function=texas_class2.find_action_texas)
-                        logger_game.info(f'{agent2_str} {texas_class2.act2pos[action]}')
-                        print(f'{agent2_str} {texas_class2.act2pos[action]}')
+                        intermediate_results, action = call_llm_api_check_intermediate(state_prompt, system_prompt2, logger2, agent2, "texas", find_action_function=texas_class2.find_action_texas)
+                        logger_game.info(f'{agent2_label} {texas_class2.act2pos[action]}')
+                        print(f'{agent2_label} {texas_class2.act2pos[action]}')
                     logger_game.info(f'Intermediate results: {intermediate_results}')
                     # check_results = check_intermediate_texas(intermediate_results, texas_class2.private, texas_class2.public)
                     # agent2_intermediate_correct += check_results[0]
@@ -258,11 +263,11 @@ def main():
             # ---------------------------------------------
         agent1_scores+=agent1_reward
         agent2_scores+=agent2_reward
-        logger_game.info('Cycle {} results: {} {}:{} {};'.format(cycle, agent1_str, agent1_reward, agent2_str, agent2_reward))
+        logger_game.info('Cycle {} results: {} {}:{} {};'.format(cycle, agent1_label, agent1_reward, agent2_label, agent2_reward))
         env.close()
 
     # ---------------To be modified: log final results----------------
-    logger_game.info('Final score: {} {}:{} {}; total {} requests'.format(agent1_str, agent1_scores, agent2_str, agent2_scores, count_for_request))
+    logger_game.info('Final score: {} {}:{} {}; total {} requests'.format(agent1_label, agent1_scores, agent2_label, agent2_scores, count_for_request))
     # logger_game.info('Agent1 intermediate correct rate: {}/{}, {}'.format(agent1_intermediate_correct, agent1_intermediate_total, agent1_intermediate_correct/agent1_intermediate_total))
     # logger_game.info('Agent2 intermediate correct rate: {}/{}, {}'.format(agent2_intermediate_correct, agent2_intermediate_total, agent2_intermediate_correct/agent2_intermediate_total))
     # ---------------------------------------------
@@ -275,6 +280,8 @@ parser.add_argument('agent1_str', type=str, help='Agent 1 string')
 parser.add_argument('agent2_str', type=str, help='Agent 2 string')
 parser.add_argument('--cycles', type=int, help='Times of game cycles', default=1)
 parser.add_argument('--key_start', type=int, help='', default=0)
+parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
+parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
 # Parse the arguments
 args = parser.parse_args()
 main()

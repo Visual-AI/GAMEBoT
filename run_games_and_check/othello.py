@@ -8,6 +8,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 sys.path.append(parent_dir) # add path
 from prompt_check_intermediate import *
+from prompt_field_rationale import build_gamebot_prompt
 import logging
 from datetime import datetime
 import pdb
@@ -17,12 +18,12 @@ from game_env.othello import Othello
 import re
 
 
-def async_call_llm_api(frame_input, logger, agent, agent_str, random_move):
+def async_call_llm_api(frame_input, system_prompt, logger, agent, agent_str, random_move):
     if agent_str == 'random':
         return random_move
     else:
         logger.info(frame_input)
-        final_input1 = system_prompt_othello + frame_input
+        final_input1 = system_prompt + frame_input
         response = ''
         while len(response) == 0:
             response = agent.get_response_text(final_input1)
@@ -59,13 +60,17 @@ def main():
     # agent2_str = 'mixtral-8x7b-32768'
     agent1_str = args.agent1_str
     agent2_str = args.agent2_str
+    prompt1 = build_gamebot_prompt("othello", system_prompt_othello, args.prompt_type_agent1, role="agent1")
+    prompt2 = build_gamebot_prompt("othello", system_prompt_othello, args.prompt_type_agent2, role="agent2")
+    agent1_label = agent1_str if agent1_str == "random" else agent1_str + "_" + args.prompt_type_agent1
+    agent2_label = agent2_str if agent2_str == "random" else agent2_str + "_" + args.prompt_type_agent2
     cycles = args.cycles
     agent1_scores = 0
     agent2_scores = 0
     init_agent = InitAgent(key_start=args.key_start)
     agent1 = init_agent.init_agent(agent1_str)
     agent2 = init_agent.init_agent(agent2_str)
-    run_category = 'running_log/othello/{}_vs_{}_'.format(agent1_str, agent2_str) + date_string
+    run_category = 'running_log/othello/{}_vs_{}_'.format(agent1_label, agent2_label) + date_string
 
     if not os.path.exists(run_category):
         # Create the directory
@@ -82,13 +87,14 @@ def main():
     logger1.setLevel(logging.INFO)
     logger2.setLevel(logging.INFO)
     logger_game.setLevel(logging.INFO)
-    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_str))
-    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_str))
+    file_handler1 = logging.FileHandler('{}/{}.log'.format(run_category, agent1_label))
+    file_handler2 = logging.FileHandler('{}/{}.log'.format(run_category, agent2_label))
     file_handler_game = logging.FileHandler('{}/game.log'.format(run_category))
     logger1.addHandler(file_handler1)
     logger2.addHandler(file_handler2)
     logger_game.addHandler(file_handler_game)
-    logger_game.info(system_prompt_othello)
+    logger_game.info('Prompt1:\n {}'.format(prompt1))
+    logger_game.info('Prompt2:\n {}'.format(prompt2))
     # logging.basicConfig(filename='{}/logfile.log'.format(run_category), level=logging.INFO)
 
     # env.reset(seed=random.randint(0, 9999))
@@ -128,12 +134,12 @@ def main():
             else:
                 agent1_no_valid_moves = False
                 frame_input = game.move_with_hint()
-                col, row = async_call_llm_api(frame_input, logger1, agent1, agent1_str, game.force_move())
+                col, row = async_call_llm_api(frame_input, prompt1, logger1, agent1, agent1_str, game.force_move())
 
                 if not game.make_move(col, row):
                     force_penalty[0] += 1
                     col, row = game.force_move()
-                    print(f'wrong move of {agent1_str}!!!')
+                    print(f'wrong move of {agent1_label}!!!')
                     if not game.make_move(col, row):
                         pdb.set_trace()
                 action1 = (col, row)
@@ -151,9 +157,9 @@ def main():
             else:
                 agent2_no_valid_moves = False
                 frame_input = game.move_with_hint()
-                col, row = async_call_llm_api(frame_input, logger2, agent2, agent2_str, game.force_move())
+                col, row = async_call_llm_api(frame_input, prompt2, logger2, agent2, agent2_str, game.force_move())
                 if not game.make_move(col, row):
-                    print(f'wrong move of {agent2_str}!!!')
+                    print(f'wrong move of {agent2_label}!!!')
                     force_penalty[1] += 1
                     col, row = game.force_move()
                     if not game.make_move(col, row):
@@ -161,7 +167,7 @@ def main():
                 action2 = (col, row)
 
             logger_game.info(
-                '{} takes action {}; {} takes action {}'.format(agent1_str, action1, agent2_str, action2))
+                '{} takes action {}; {} takes action {}'.format(agent1_label, action1, agent2_label, action2))
 
             curr_time = time.time()
             duration_seconds = curr_time - start_time
@@ -176,13 +182,13 @@ def main():
         agent1_score, agent2_score = game.get_score()
         logger_game.info(
             'Final result: {} scores {} hint_penalty {} force_penalty {}, and {} scores {} hint_penalty {} force_penalty {}'.format(
-                agent1_str, agent1_score, hint_penalty[0], force_penalty[0], agent2_str, agent2_score, hint_penalty[1],
+                agent1_label, agent1_score, hint_penalty[0], force_penalty[0], agent2_label, agent2_score, hint_penalty[1],
                 force_penalty[1]))
         if agent1_score>agent2_score:
             agent1_scores += 1
         elif agent1_score<agent2_score:
             agent2_scores += 1
-    logger_game.info('Final score: {} {}:{} {}'.format(agent1_str, agent1_scores, agent2_scores, agent2_str))
+    logger_game.info('Final score: {} {}:{} {}'.format(agent1_label, agent1_scores, agent2_scores, agent2_label))
 # Create the parser
 parser = argparse.ArgumentParser(description='Parser for test of agent')
 
@@ -191,6 +197,8 @@ parser.add_argument('agent1_str', help='Path to the input file')
 parser.add_argument('agent2_str', help='Path to the output file')
 parser.add_argument('--cycles', type=int, help='Times of game cycles', default=1)
 parser.add_argument('--key_start', type=int, help='Times of game cycles', default=0)
+parser.add_argument('--prompt_type_agent1', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
+parser.add_argument('--prompt_type_agent2', type=str, help='Type of prompt: original|field_aux|field_only', default='original')
 
 # Parse the arguments
 args = parser.parse_args()
