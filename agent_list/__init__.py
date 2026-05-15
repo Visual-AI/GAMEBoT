@@ -1,19 +1,6 @@
 import random
 
-from .Groq import Groq4Game
-from .Kimi import Kimi
-from .OpenAI import OpenAI, AzOpenAI
-from .Vertex import Vertex
-from .Claude import Claude
-# from .Command_R import Command_R
-from .Jamba import Jamba
-from .LLaMA3_1 import LLaMA3_1
-from .Mistral import Mistral
-# from .Phi import Phi
-from .Gemini import Gemini
-from .Reka import Reka
 import keys
-from .DeepSeek_ByteDance import DeepSeekR1
 
 import os
 # proxy = 'http://127.0.0.1:7890'
@@ -38,11 +25,31 @@ class InitAgent:
     def init_agent(self, agent_str, max_output_tokens=4096, temperature=0.0,
                    top_k=1, seed=42, project_id="llmsasagents", default_parameters=True,
                    n_retries=6, retry_wait=10):
-        if agent_str == 'gemini-1.0-pro-latest' or agent_str == 'gemini-1.5-flash-001' or agent_str == 'gemini-exp-1206':
+        if agent_str.startswith("ollama:"):
+            from .Local import OllamaLocal
+            agent = OllamaLocal(
+                model_name=agent_str.split(":", 1)[1],
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                n_retries=n_retries,
+                retry_wait=retry_wait,
+            )
+        elif agent_str.startswith("openai-local:") or agent_str.startswith("vllm:") or agent_str.startswith("sglang:"):
+            from .Local import OpenAICompatibleLocal
+            agent = OpenAICompatibleLocal(
+                model_name=agent_str.split(":", 1)[1],
+                temperature=temperature,
+                max_output_tokens=max_output_tokens,
+                n_retries=n_retries,
+                retry_wait=retry_wait,
+            )
+        elif agent_str == 'gemini-1.0-pro-latest' or agent_str == 'gemini-1.5-flash-001' or agent_str == 'gemini-exp-1206':
+            from .Gemini import Gemini
             agent = Gemini(model_name=agent_str,
                            api_key=keys.gemini_api_key_list[random.choice(range(0, len(keys.gemini_api_key_list)))])
         # -- Gemini via Vertex -- #
         elif agent_str.startswith('gemini'):
+            from .Vertex import Vertex
             # agent = Gemini(model_name=agent_str, api_key=keys.gemini_api_key_list[self.init_gemini_time])
             # self.init_gemini_time += 1
             agent = Vertex(agent_str,
@@ -54,18 +61,22 @@ class InitAgent:
                            n_retries=n_retries,
                            retry_wait=retry_wait)
         elif 'deepseek' in agent_str:
+            from .DeepSeek_ByteDance import DeepSeekR1
             agent = DeepSeekR1(keys.bytedance_key, max_output_tokens=8192)
         # -- Kimi -- #
         elif agent_str.startswith('kimi'):
+            from .Kimi import Kimi
             agent = Kimi(api_key=keys.kimi_api_key)
 
         # -- Command-R -- #
         elif 'command' in agent_str:
+            from .Command_R import Command_R
             agent = Command_R(agent_str,
                               temperature=temperature,
                               max_output_tokens=max_output_tokens,
                               default_parameters=default_parameters)
         elif 'jamba' in agent_str:
+            from .Jamba import Jamba
             agent = Jamba(agent_str,
                           temperature=temperature,
                           max_output_tokens=max_output_tokens,
@@ -74,6 +85,7 @@ class InitAgent:
                           n_retries=n_retries,
                           retry_wait=retry_wait)
         elif 'meta' in agent_str:
+            from .LLaMA3_1 import LLaMA3_1
             agent = LLaMA3_1(agent_str,
                              temperature=temperature,
                              max_output_tokens=max_output_tokens,
@@ -82,6 +94,7 @@ class InitAgent:
                              n_retries=n_retries,
                              retry_wait=retry_wait)
         elif 'mistral' in agent_str:
+            from .Mistral import Mistral
             agent = Mistral(agent_str,
                             temperature=temperature,
                             max_output_tokens=max_output_tokens,
@@ -93,6 +106,7 @@ class InitAgent:
                             retry_wait=retry_wait)
 
         elif 'phi' in agent_str:
+            from .Phi import Phi
             agent = Phi(agent_str,
                         temperature=temperature,
                         max_output_tokens=max_output_tokens,
@@ -101,6 +115,7 @@ class InitAgent:
                         retry_wait=retry_wait)
 
         elif 'reka' in agent_str:
+            from .Reka import Reka
             agent = Reka(agent_str,
                          api_key=keys.reka_key,
                          temperature=temperature,
@@ -112,6 +127,7 @@ class InitAgent:
 
         # -- GPT models via AzureOpenAI -- #
         elif agent_str.startswith('gpt'):
+            from .OpenAI import AzOpenAI
             azure_endpoint = ["https://baairl-eastus2.openai.azure.com/", \
                               "https://llambda-us.openai.azure.com"]
             if agent_str == 'gpt-4o' or agent_str == 'gpt-4o-mini':
@@ -134,6 +150,7 @@ class InitAgent:
                 raise ValueError(f"Unsupported model {agent_str}")
         # -- OpenAI models -- #
         elif agent_str.startswith('o1') or agent_str.startswith('o3'):
+            from .OpenAI import OpenAI
             agent = OpenAI(model_name=agent_str,
                            api_key=keys.openai_key,
                            temperature=temperature,
@@ -142,6 +159,7 @@ class InitAgent:
                            default_parameters=default_parameters)
         # -- Claude models via Vertex -- #
         elif agent_str.startswith('claude'):
+            from .Claude import Claude
             agent = Claude(model_name=agent_str,
                            temperature=temperature,
                            top_k=top_k,
@@ -153,6 +171,7 @@ class InitAgent:
         elif agent_str == 'random':
             agent = RandomAgent()
         else:
+            from .Groq import Groq4Game
             agent = Groq4Game(model_name=agent_str,
                               api_key=keys.groq_api_key_list[random.choice(range(0, len(keys.groq_api_key_list)))])
             self.init_groq_time += 1
